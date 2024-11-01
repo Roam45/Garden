@@ -66,8 +66,8 @@
         #seedCount, #money {
             font-weight: bold;
         }
-        #signup, #guestMode {
-            margin-top: 20px;
+        #authSection {
+            margin-bottom: 20px;
         }
         #game {
             display: none;
@@ -78,12 +78,12 @@
 
     <h1>Welcome to the Garden Game!</h1>
 
-    <div id="signup">
-        <h2>Sign Up</h2>
+    <div id="authSection">
+        <h2>Sign Up / Login</h2>
         <input type="email" id="email" placeholder="Email" required>
         <input type="password" id="password" placeholder="Password" required>
-        <button id="signupButton">Sign Up</button>
-        <p id="signupMessage"></p>
+        <button id="authButton">Sign Up / Login</button>
+        <p id="authMessage"></p>
     </div>
 
     <div id="guestMode">
@@ -123,18 +123,25 @@
         let userId;
         let isGuest = false;
 
-        document.getElementById('signupButton').addEventListener('click', function() {
+        document.getElementById('authButton').addEventListener('click', function() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
-            firebase.auth().createUserWithEmailAndPassword(email, password)
+            firebase.auth().signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
                     userId = userCredential.user.uid;
                     initializeGame();
                 })
                 .catch((error) => {
-                    const errorMessage = error.message;
-                    document.getElementById('signupMessage').innerText = errorMessage;
+                    firebase.auth().createUserWithEmailAndPassword(email, password)
+                        .then((userCredential) => {
+                            userId = userCredential.user.uid;
+                            initializeGame();
+                        })
+                        .catch((error) => {
+                            const errorMessage = error.message;
+                            document.getElementById('authMessage').innerText = errorMessage;
+                        });
                 });
         });
 
@@ -192,7 +199,7 @@
         }
 
         function initializeGame() {
-            document.getElementById('signup').style.display = 'none';
+            document.getElementById('authSection').style.display = 'none';
             document.getElementById('guestMode').style.display = 'none';
             document.getElementById('game').style.display = 'block';
             updateUI();
