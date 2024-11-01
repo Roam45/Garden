@@ -3,216 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Garden Game with Chat</title>
+    <title>The Garden Game</title>
     <style>
         body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f0f8ff;
+            font-family: Arial, sans-serif;
+            background-color: #e0f7fa;
+            color: #2e7d32;
             text-align: center;
+        }
+
+        .game-container {
+            margin: 50px auto;
             padding: 20px;
-            margin: 0;
-        }
-        h1 {
-            color: #2c3e50;
-        }
-        #garden {
-            border: 4px solid #27ae60;
+            background-color: #fff;
             border-radius: 10px;
-            padding: 10px;
-            margin: 20px auto;
-            width: 300px;
-            height: 200px;
-            background-color: #e8f8f5;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            width: 400px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
-        .plant {
-            position: absolute;
-            bottom: 0;
-            transition: transform 0.5s;
+
+        .controls {
+            margin: 20px 0;
         }
+
         button {
-            padding: 12px 20px;
-            font-size: 16px;
             margin: 5px;
-            border: none;
-            border-radius: 5px;
-            background-color: #3498db;
-            color: white;
+            padding: 10px;
+            font-size: 16px;
             cursor: pointer;
-            transition: background-color 0.3s, transform 0.3s;
         }
-        button:hover {
-            background-color: #2980b9;
-            transform: scale(1.05);
-        }
-        #message {
-            margin-top: 10px;
-            font-weight: bold;
-            color: #e74c3c;
-        }
-        #seedCount, #money {
-            font-weight: bold;
-        }
-        #chatSection {
+
+        #seed-info {
             margin-top: 20px;
         }
-        #chatMessages {
-            height: 100px;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            padding: 5px;
-            margin: 10px 0;
-        }
-        #chatInput {
-            width: 70%;
-        }
     </style>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
 </head>
 <body>
-
-    <h1>Welcome to the Garden Game!</h1>
-
-    <div id="signupSection">
-        <h2>Sign Up for Chat</h2>
-        <input type="text" id="username" placeholder="Username" required>
-        <input type="password" id="chatPassword" placeholder="Password" required>
-        <button id="signupButton">Sign Up</button>
-        <p id="signupMessage"></p>
+    <div class="game-container">
+        <h1>The Garden Game</h1>
+        <div id="status"></div>
+        <div id="money">Money: $<span id="money-amount">100</span></div>
+        <div id="seed-info">
+            <p>Seeds Planted: <span id="seeds-planted">0</span></p>
+            <p>Seed Level: <span id="seed-level">1</span></p>
+            <p>Seed Value: $<span id="seed-value">10</span></p>
+        </div>
+        <div class="controls">
+            <button id="plant-seed">Plant Seed</button>
+            <button id="sell-seeds">Sell Seeds</button>
+            <button id="upgrade-seed">Upgrade Seed Level</button>
+            <button id="restart">Restart Game</button>
+        </div>
     </div>
-
-    <div id="game" style="display:none;">
-        <div id="garden"></div>
-        <button id="plantButton">Plant a Seed</button>
-        <button id="buySeedsButton">Buy Better Seeds ($<span id="seedPrice">1</span>)</button>
-        <button id="sellSeedsButton">Sell Seeds</button>
-        <p id="message"></p>
-        <p>Seeds Planted: <span id="seedCount">0</span></p>
-        <p>Money: $<span id="money">0</span></p>
-    </div>
-
-    <div id="chatSection" style="display:none;">
-        <h2>Global Chat</h2>
-        <div id="chatMessages"></div>
-        <input type="text" id="chatInput" placeholder="Type your message...">
-        <button id="sendMessageButton">Send</button>
-    </div>
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js"></script>
     <script>
-        // Your Firebase configuration
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyAkd1bMR1KAOrqqp90NkHgG6Sv8Z5NAjVs",
             authDomain: "roam-games.firebaseapp.com",
             projectId: "roam-games",
             storageBucket: "roam-games.appspot.com",
             messagingSenderId: "1086579432548",
-            appId: "1:1086579432548:web:0f57c16eccdbbcf0bc5371",
-            measurementId: "G-FPVKX4THWZ"
+            appId: "1:1086579432548:web:0f57c16eccdbbcf0bc5371"
         };
 
         // Initialize Firebase
         const app = firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const database = firebase.database();
+        const db = firebase.firestore();
 
-        let plantCount = 0; 
-        let money = 10; 
-        let seedPrice = 1;
+        let money = 100;
+        let seedsPlanted = 0;
+        let seedLevel = 1;
+        let seedValue = 10;
 
-        document.getElementById('signupButton').addEventListener('click', function() {
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('chatPassword').value;
+        document.getElementById('plant-seed').addEventListener('click', plantSeed);
+        document.getElementById('sell-seeds').addEventListener('click', sellSeeds);
+        document.getElementById('upgrade-seed').addEventListener('click', upgradeSeed);
+        document.getElementById('restart').addEventListener('click', initGame);
 
-            if (username && password) {
-                // Sign up with username as email for Firebase
-                const email = `${username}@example.com`;
-                auth.createUserWithEmailAndPassword(email, password)
-                    .then(() => {
-                        document.getElementById('signupMessage').innerText = `Welcome, ${username}!`;
-                        document.getElementById('signupSection').style.display = 'none';
-                        document.getElementById('game').style.display = 'block'; // Show garden game
-                        document.getElementById('chatSection').style.display = 'block'; // Show chat section
-                        initializeGame();
-                    })
-                    .catch(error => {
-                        document.getElementById('signupMessage').innerText = error.message;
-                    });
-            } else {
-                document.getElementById('signupMessage').innerText = "Please fill in both fields.";
-            }
-        });
-
-        function initializeGame() {
-            updateUI();
-            loadChatMessages();
+        function initGame() {
+            money = 100;
+            seedsPlanted = 0;
+            seedLevel = 1;
+            seedValue = 10;
+            updateDisplay();
+            document.getElementById('status').textContent = '';
         }
 
-        function updateUI() {
-            document.getElementById('seedCount').innerText = plantCount;
-            document.getElementById('money').innerText = money;
-            document.getElementById('message').innerText = `You have planted ${plantCount} seeds and have $${money}.`;
+        function plantSeed() {
+            if (money >= seedValue) {
+                money -= seedValue;
+                seedsPlanted++;
+                updateDisplay();
+                checkForThief();
+            } else {
+                document.getElementById('status').textContent = 'Not enough money to plant a seed!';
+            }
         }
 
-        document.getElementById('plantButton').addEventListener('click', function() {
-            plantCount++;
-            updateUI();
-            const garden = document.getElementById('garden');
-            const newPlant = document.createElement('div');
-            newPlant.className = 'plant';
-            newPlant.style.left = Math.random() * (garden.clientWidth - 50) + 'px';
-            newPlant.innerText = '🌱';
-            garden.appendChild(newPlant);
-        });
-
-        document.getElementById('buySeedsButton').addEventListener('click', function() {
-            if (money >= seedPrice) {
-                money -= seedPrice;
-                seedPrice++;
-                updateUI();
+        function sellSeeds() {
+            if (seedsPlanted > 0) {
+                money += seedsPlanted * seedValue;
+                seedsPlanted = 0;
+                updateDisplay();
+                document.getElementById('status').textContent = 'Seeds sold!';
             } else {
-                document.getElementById('message').innerText = `Not enough money to buy seeds!`;
+                document.getElementById('status').textContent = 'No seeds to sell!';
             }
-        });
-
-        document.getElementById('sellSeedsButton').addEventListener('click', function() {
-            if (plantCount > 0) {
-                plantCount--;
-                money += 2; // Selling a seed for $2
-                updateUI();
-            } else {
-                document.getElementById('message').innerText = `No seeds to sell!`;
-            }
-        });
-
-        document.getElementById('sendMessageButton').addEventListener('click', function() {
-            const message = document.getElementById('chatInput').value;
-            const username = document.getElementById('username').value.split('@')[0]; // Get only the username part
-
-            if (message && username) {
-                const newMessage = {
-                    username: username,
-                    message: message,
-                    timestamp: Date.now()
-                };
-                database.ref('chatMessages').push(newMessage);
-                document.getElementById('chatInput').value = ''; // Clear input
-            }
-        });
-
-        function loadChatMessages() {
-            database.ref('chatMessages').on('child_added', function(snapshot) {
-                const messageData = snapshot.val();
-                const messageElement = document.createElement('div');
-                messageElement.innerText = `${messageData.username}: ${messageData.message}`;
-                document.getElementById('chatMessages').appendChild(messageElement);
-                document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight; // Scroll to bottom
-            });
         }
+
+        function upgradeSeed() {
+            const upgradeCost = seedLevel * 20;
+            if (money >= upgradeCost) {
+                money -= upgradeCost;
+                seedLevel++;
+                seedValue += 5; // Increase seed value
+                updateDisplay();
+                document.getElementById('status').textContent = 'Seed level upgraded!';
+            } else {
+                document.getElementById('status').textContent = 'Not enough money to upgrade!';
+            }
+        }
+
+        function updateDisplay() {
+            document.getElementById('money-amount').textContent = money;
+            document.getElementById('seeds-planted').textContent = seedsPlanted;
+            document.getElementById('seed-level').textContent = seedLevel;
+            document.getElementById('seed-value').textContent = seedValue;
+        }
+
+        function checkForThief() {
+            const thiefChance = Math.random();
+            if (thiefChance < 0.2) { // 20% chance for the thief to steal money
+                const stolenAmount = Math.min(20, money); // Thief steals up to $20
+                money -= stolenAmount;
+                document.getElementById('status').textContent = `Oh no! A thief stole $${stolenAmount}!`;
+                updateDisplay();
+            }
+        }
+
+        // Initialize the game on page load
+        initGame();
     </script>
 </body>
 </html>
