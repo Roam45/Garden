@@ -1,11 +1,24 @@
-let plantCount = 0;
-let money = 0;
+let plantCount = 1; // Start with 1 seed
+let money = 10; // Start with $10
 let seedPrice = 1;
 let fencePrice = 5;
 const maxFences = 10;
 const fenceWidth = 30;
 let fences = [];
 
+// Automatically plant 1 seed at the beginning
+document.addEventListener('DOMContentLoaded', () => {
+    const garden = document.getElementById('garden');
+    const newPlant = document.createElement('div');
+    newPlant.className = 'plant';
+    newPlant.style.left = Math.random() * (garden.clientWidth - 50) + 'px';
+    newPlant.innerText = '🌱';
+    garden.appendChild(newPlant);
+    document.getElementById('seedCount').innerText = plantCount;
+    document.getElementById('message').innerText = `You have planted ${plantCount} seed!`;
+});
+
+// Your existing game logic...
 function attackGarden(isPoisonEnemy = false) {
     const enemy = document.createElement('div');
     enemy.className = isPoisonEnemy ? 'enemy poisonEnemy' : 'enemy';
