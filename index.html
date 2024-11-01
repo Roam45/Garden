@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Garden Game</title>
+    <title>Simple Garden Game with Chat</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -55,11 +55,18 @@
         #seedCount, #money {
             font-weight: bold;
         }
-        #authSection {
-            margin-bottom: 20px;
+        #chatSection {
+            margin-top: 20px;
         }
-        #game {
-            display: none;
+        #chatMessages {
+            height: 100px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 5px;
+            margin: 10px 0;
+        }
+        #chatInput {
+            width: 70%;
         }
     </style>
 </head>
@@ -67,17 +74,12 @@
 
     <h1>Welcome to the Garden Game!</h1>
 
-    <div id="authSection">
-        <h2>Sign Up / Login</h2>
-        <input type="email" id="email" placeholder="Email" required>
-        <input type="password" id="password" placeholder="Password" required>
-        <button id="authButton">Sign Up / Login</button>
-        <p id="authMessage"></p>
-    </div>
-
-    <div id="guestMode">
-        <h2>Or Play as a Guest</h2>
-        <button id="guestButton">Continue as Guest</button>
+    <div id="signupSection">
+        <h2>Sign Up for Chat</h2>
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="chatPassword" placeholder="Password" required>
+        <button id="signupButton">Sign Up</button>
+        <p id="signupMessage"></p>
     </div>
 
     <div id="game">
@@ -88,6 +90,13 @@
         <p id="message"></p>
         <p>Seeds Planted: <span id="seedCount">0</span></p>
         <p>Money: $<span id="money">0</span></p>
+    </div>
+
+    <div id="chatSection">
+        <h2>Global Chat</h2>
+        <div id="chatMessages"></div>
+        <input type="text" id="chatInput" placeholder="Type your message...">
+        <button id="sendMessageButton">Send</button>
     </div>
 
     <!-- Firebase SDK -->
@@ -114,78 +123,32 @@
         let plantCount = 0; 
         let money = 10; 
         let seedPrice = 1;
-        let userId;
 
-        document.getElementById('authButton').addEventListener('click', function() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+        document.getElementById('signupButton').addEventListener('click', function() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('chatPassword').value;
 
-            if (email && password) {
-                auth.signInWithEmailAndPassword(email, password)
-                    .then((userCredential) => {
-                        userId = userCredential.user.uid;
+            if (username && password) {
+                // Sign up with username as email for Firebase
+                const email = `${username}@example.com`;
+                auth.createUserWithEmailAndPassword(email, password)
+                    .then(() => {
+                        document.getElementById('signupMessage').innerText = `Welcome, ${username}!`;
+                        document.getElementById('signupSection').style.display = 'none';
+                        document.getElementById('game').style.display = 'block';
                         initializeGame();
                     })
-                    .catch((error) => {
-                        const errorCode = error.code;
-                        if (errorCode === 'auth/user-not-found') {
-                            auth.createUserWithEmailAndPassword(email, password)
-                                .then((userCredential) => {
-                                    userId = userCredential.user.uid;
-                                    initializeGame();
-                                })
-                                .catch((error) => {
-                                    document.getElementById('authMessage').innerText = error.message;
-                                });
-                        } else {
-                            document.getElementById('authMessage').innerText = error.message;
-                        }
+                    .catch(error => {
+                        document.getElementById('signupMessage').innerText = error.message;
                     });
             } else {
-                document.getElementById('authMessage').innerText = "Please fill in both fields.";
+                document.getElementById('signupMessage').innerText = "Please fill in both fields.";
             }
         });
 
-        document.getElementById('guestButton').addEventListener('click', function() {
-            loadGuestData();
-            initializeGame();
-        });
-
-        function loadGuestData() {
-            const guestData = JSON.parse(localStorage.getItem('guestData'));
-            if (guestData) {
-                plantCount = guestData.plantCount || 0;
-                money = guestData.money || 10;
-            }
-        }
-
-        function saveGuestData() {
-            localStorage.setItem('guestData', JSON.stringify({ plantCount, money }));
-        }
-
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                userId = user.uid;
-                loadGameData();
-            }
-        });
-
-        function loadGameData() {
-            database.ref(`users/${userId}`).once('value').then(snapshot => {
-                const data = snapshot.val();
-                if (data) {
-                    plantCount = data.plantCount || 0;
-                    money = data.money || 10;
-                }
-                initializeGame();
-            });
-        }
-
-        function saveGameData() {
-            database.ref(`users/${userId}`).set({
-                plantCount,
-                money
-            });
+        function initializeGame() {
+            updateUI();
+            loadChatMessages();
         }
 
         function updateUI() {
@@ -194,24 +157,15 @@
             document.getElementById('message').innerText = `You have planted ${plantCount} seeds and have $${money}.`;
         }
 
-        function initializeGame() {
-            document.getElementById('authSection').style.display = 'none';
-            document.getElementById('guestMode').style.display = 'none';
-            document.getElementById('game').style.display = 'block';
-            updateUI();
-        }
-
         document.getElementById('plantButton').addEventListener('click', function() {
             plantCount++;
             updateUI();
-            saveGameData();
         });
 
         document.getElementById('buySeedsButton').addEventListener('click', function() {
             if (money >= seedPrice) {
                 money -= seedPrice;
                 seedPrice++;
-                saveGameData();
                 updateUI();
             } else {
                 document.getElementById('message').innerText = `Not enough money to buy seeds!`;
@@ -222,12 +176,36 @@
             if (plantCount > 0) {
                 plantCount--;
                 money += 2; // Selling a seed for $2
-                saveGameData();
                 updateUI();
             } else {
                 document.getElementById('message').innerText = `No seeds to sell!`;
             }
         });
+
+        document.getElementById('sendMessageButton').addEventListener('click', function() {
+            const message = document.getElementById('chatInput').value;
+            const username = document.getElementById('username').value;
+
+            if (message && username) {
+                const newMessage = {
+                    username: username,
+                    message: message,
+                    timestamp: Date.now()
+                };
+                database.ref('chatMessages').push(newMessage);
+                document.getElementById('chatInput').value = ''; // Clear input
+            }
+        });
+
+        function loadChatMessages() {
+            database.ref('chatMessages').on('child_added', function(snapshot) {
+                const messageData = snapshot.val();
+                const messageElement = document.createElement('div');
+                messageElement.innerText = `${messageData.username}: ${messageData.message}`;
+                document.getElementById('chatMessages').appendChild(messageElement);
+                document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight; // Scroll to bottom
+            });
+        }
     </script>
 </body>
 </html>
