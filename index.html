@@ -135,8 +135,8 @@
                     .then(() => {
                         document.getElementById('signupMessage').innerText = `Welcome, ${username}!`;
                         document.getElementById('signupSection').style.display = 'none';
-                        document.getElementById('game').style.display = 'block';
-                        document.getElementById('chatSection').style.display = 'block';
+                        document.getElementById('game').style.display = 'block'; // Show garden game
+                        document.getElementById('chatSection').style.display = 'block'; // Show chat section
                         initializeGame();
                     })
                     .catch(error => {
@@ -161,6 +161,12 @@
         document.getElementById('plantButton').addEventListener('click', function() {
             plantCount++;
             updateUI();
+            const garden = document.getElementById('garden');
+            const newPlant = document.createElement('div');
+            newPlant.className = 'plant';
+            newPlant.style.left = Math.random() * (garden.clientWidth - 50) + 'px';
+            newPlant.innerText = '🌱';
+            garden.appendChild(newPlant);
         });
 
         document.getElementById('buySeedsButton').addEventListener('click', function() {
