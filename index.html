@@ -82,7 +82,7 @@
         <p id="signupMessage"></p>
     </div>
 
-    <div id="game">
+    <div id="game" style="display:none;">
         <div id="garden"></div>
         <button id="plantButton">Plant a Seed</button>
         <button id="buySeedsButton">Buy Better Seeds ($<span id="seedPrice">1</span>)</button>
@@ -92,7 +92,7 @@
         <p>Money: $<span id="money">0</span></p>
     </div>
 
-    <div id="chatSection">
+    <div id="chatSection" style="display:none;">
         <h2>Global Chat</h2>
         <div id="chatMessages"></div>
         <input type="text" id="chatInput" placeholder="Type your message...">
@@ -136,6 +136,7 @@
                         document.getElementById('signupMessage').innerText = `Welcome, ${username}!`;
                         document.getElementById('signupSection').style.display = 'none';
                         document.getElementById('game').style.display = 'block';
+                        document.getElementById('chatSection').style.display = 'block';
                         initializeGame();
                     })
                     .catch(error => {
@@ -184,7 +185,7 @@
 
         document.getElementById('sendMessageButton').addEventListener('click', function() {
             const message = document.getElementById('chatInput').value;
-            const username = document.getElementById('username').value;
+            const username = document.getElementById('username').value.split('@')[0]; // Get only the username part
 
             if (message && username) {
                 const newMessage = {
